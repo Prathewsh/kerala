@@ -1,0 +1,22 @@
+[
+  {
+    "label": "WEATHER ALERT",
+    "text": "IMD issues Orange Alert for Kannur & Kasaragod; Yellow Alert for remaining Kerala districts with heavy monsoon rain expected.",
+    "link": "/news"
+  },
+  {
+    "label": "CO-KERALA AIRLINE",
+    "text": "Plans underway for 'Co-Kerala', a new cooperative sector airline aiming to offer domestic flights starting at ₹3,500.",
+    "link": "/news"
+  },
+  {
+    "label": "TOURISM UPDATE",
+    "text": "Kerala Government grants official 'industry status' to the tourism sector, allocating ₹325 crore for infrastructure.",
+    "link": "/news"
+  },
+  {
+    "label": "STARTUP NEWS",
+    "text": "Kerala Budget allocates ₹79 crore for startups, featuring a dedicated ₹50 crore fund for Gen-Z entrepreneurs.",
+    "link": "/news"
+  }
+]

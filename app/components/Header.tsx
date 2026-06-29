@@ -1,6 +1,10 @@
+import { AlertBanner } from "./AlertBanner";
+
 export function Header({ className = "" }: { className?: string }) {
   return (
-    <header className={`relative z-20 w-full ${className}`}>
+    <>
+      <AlertBanner />
+      <header className={`relative z-20 w-full ${className}`}>
       <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-4 flex items-center justify-between">
       {/* Brand Logo */}
       <a href="/" className="flex items-center gap-3 no-underline cursor-pointer">
@@ -58,5 +62,6 @@ export function Header({ className = "" }: { className?: string }) {
       </div>
     </div>
   </header>
+  </>
   );
 }
