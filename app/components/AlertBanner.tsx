@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import alertsData from "../../data/alerts.json";
 
 interface AlertItem {
   label: string;
@@ -8,11 +7,32 @@ interface AlertItem {
 }
 
 export function AlertBanner() {
+  const [alerts, setAlerts] = useState<AlertItem[]>([]);
   const [currentAlertIndex, setCurrentAlertIndex] = useState(0);
   const [fade, setFade] = useState(true);
   const [isAlertVisible, setIsAlertVisible] = useState(true);
 
-  const alerts: AlertItem[] = alertsData;
+  // Fetch live news from API
+  useEffect(() => {
+    async function fetchAlerts() {
+      try {
+        const res = await fetch("/api/news");
+        if (!res.ok) throw new Error("Failed to fetch news alerts");
+        const data = await res.json();
+        if (data.items && data.items.length > 0) {
+          const mappedAlerts = data.items.map((item: any) => ({
+            label: item.source || "News Update",
+            text: item.title || "",
+            link: item.link || "#",
+          }));
+          setAlerts(mappedAlerts);
+        }
+      } catch (err) {
+        console.error("Error fetching news alerts, using fallback:", err);
+      }
+    }
+    fetchAlerts();
+  }, []);
 
   // Initialize visibility from sessionStorage to persist dismissal during session
   useEffect(() => {

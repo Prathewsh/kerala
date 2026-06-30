@@ -47,6 +47,16 @@ export function Header({ className = "" }: { className?: string }) {
           <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
           Live News
         </a>
+        <a 
+          href="/fifawc2026" 
+          className="bg-black hover:bg-gray-900 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition-all duration-200 shadow-sm flex items-center gap-1.5 no-underline cursor-pointer border border-gray-800"
+        >
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+          </span>
+          FIFA WC 2026
+        </a>
       </nav>
 
       {/* Actions */}
