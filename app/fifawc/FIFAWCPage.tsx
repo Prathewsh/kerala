@@ -132,15 +132,92 @@ export default function FIFAWCPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Navigation Tabs (Matching the FOX Sports Sub-Header)
-  const [activeTab, setActiveTab] = useState<"SCHEDULE" | "STANDINGS" | "VIDEOS" | "STATS" | "ABOUT">("SCHEDULE");
+  const [activeTab, setActiveTab] = useState<"UPCOMING" | "SCHEDULE" | "STANDINGS" | "VIDEOS" | "STATS" | "ABOUT">("UPCOMING");
   const [activeVideo, setActiveVideo] = useState<VideoItem>(FIFA_VIDEOS[0]);
-  
+
   // Date Selector state
   const [selectedDateStr, setSelectedDateStr] = useState<string>("");
 
   // YouTube Player API State
   const [player, setPlayer] = useState<any>(null);
   const [isMuted, setIsMuted] = useState(true);
+
+  // Countdown State for Featured Match Hero Banner
+  const [timeLeft, setTimeLeft] = useState<{
+    days: number;
+    hours: number;
+    minutes: number;
+    seconds: number;
+  } | null>(null);
+
+  // Find the featured match (e.g. live match, or next upcoming match)
+  const getFeaturedFixture = () => {
+    if (!data || !data.summary.fixtures) return null;
+    const fixtures = data.summary.fixtures;
+
+    // 1. Check for live matches
+    const liveMatch = fixtures.find((f) => {
+      const status = f.status.short.toUpperCase();
+      return ["1H", "2H", "HT", "ET", "P", "BT"].includes(status);
+    });
+    if (liveMatch) return liveMatch;
+
+    // 2. Check for upcoming matches today
+    const todayStr = new Date().toDateString();
+    const upcomingToday = fixtures.find((f) => {
+      const isToday = new Date(f.date).toDateString() === todayStr;
+      const isFinished = ["FT", "AET", "PEN"].includes(f.status.short.toUpperCase());
+      return isToday && !isFinished;
+    });
+    if (upcomingToday) return upcomingToday;
+
+    // 3. Check for any next upcoming match
+    const nextUpcoming = fixtures.find((f) => {
+      const isFinished = ["FT", "AET", "PEN"].includes(f.status.short.toUpperCase());
+      return !isFinished;
+    });
+    if (nextUpcoming) return nextUpcoming;
+
+    // 4. Fallback to the last match
+    return fixtures[fixtures.length - 1] || null;
+  };
+
+  const featuredMatch = data ? getFeaturedFixture() : null;
+
+  // Countdown Effect for the Featured Match
+  useEffect(() => {
+    if (!featuredMatch) return;
+
+    const isFinished = ["FT", "AET", "PEN"].includes(featuredMatch.status.short.toUpperCase());
+    const isLive = ["1H", "2H", "HT", "ET", "P", "BT"].includes(featuredMatch.status.short.toUpperCase());
+
+    if (isFinished || isLive) {
+      setTimeLeft(null);
+      return;
+    }
+
+    const targetTime = new Date(featuredMatch.date).getTime();
+
+    const updateTimer = () => {
+      const now = new Date().getTime();
+      const difference = targetTime - now;
+
+      if (difference <= 0) {
+        setTimeLeft(null);
+      } else {
+        const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+        setTimeLeft({ days, hours, minutes, seconds });
+      }
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(interval);
+  }, [featuredMatch?.id]);
 
   // Initialize YouTube Player API for active video iframe
   useEffect(() => {
@@ -374,6 +451,7 @@ export default function FIFAWCPage() {
           {/* Tab Menu */}
           <nav className="flex items-center gap-1 overflow-x-auto max-w-full scrollbar-none">
             {([
+              { id: "UPCOMING", label: "MATCH CENTER" },
               { id: "SCHEDULE", label: "SCHEDULE" },
               { id: "STANDINGS", label: "STANDINGS" },
               { id: "VIDEOS", label: "VIDEOS" },
@@ -430,6 +508,227 @@ export default function FIFAWCPage() {
 
             {/* LEFT COLUMN: Main Content */}
             <div className="lg:col-span-2 space-y-8">
+
+              {/* UPCOMING TAB */}
+              {activeTab === "UPCOMING" && (
+                <div className="space-y-8">
+                  {/* Title */}
+                  <div className="border-b border-[#e2e8e4] pb-3">
+                    <h3 className="text-xl font-extrabold tracking-tight text-[#14261c] font-serif uppercase">
+                      MATCH CENTER
+                    </h3>
+                  </div>
+
+                  {/* Featured Match Hero Banner */}
+                  {featuredMatch ? (
+                    <div className="bg-white border border-[#e2e8e4] rounded-3xl p-6 sm:p-8 shadow-sm flex flex-col items-center justify-between relative overflow-hidden text-[#1a2e22] select-none">
+                      {/* Round info on top left */}
+                      <span className="absolute top-4 left-6 text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                        {featuredMatch.league.round} &bull; Match #{featuredMatch.id}
+                      </span>
+
+                      {/* Official Logo at the top center */}
+                      <div className="flex justify-center mb-6 mt-2">
+                        <img
+                          src="/FIFAMensWorldCup2026.webp"
+                          alt="FIFA 2026"
+                          className="w-10 h-12 object-contain"
+                        />
+                      </div>
+
+                      {/* Main Teams Row */}
+                      <div className="w-full grid grid-cols-3 items-center justify-center gap-4 py-2">
+                        {/* Home Team */}
+                        <div className="flex items-center justify-end gap-3.5 text-right">
+                          <span className="text-base sm:text-xl font-extrabold text-[#14261c] font-serif">
+                            {featuredMatch.teams.home.name}
+                          </span>
+                          <img
+                            src={featuredMatch.teams.home.logo}
+                            alt={featuredMatch.teams.home.name}
+                            className="w-10 h-10 sm:w-12 sm:h-12 object-contain p-1 rounded-xl bg-slate-50 border border-gray-100 shadow-xs"
+                          />
+                        </div>
+
+                        {/* Center Score / Time / Status */}
+                        <div className="flex flex-col items-center justify-center text-center">
+                          {/* If Live or Finished, show large Score */}
+                          {["FT", "AET", "PEN", "1H", "2H", "HT", "ET", "P", "BT"].includes(featuredMatch.status.short.toUpperCase()) ? (
+                            <div className="flex items-center gap-4">
+                              <span className="text-3xl sm:text-4xl font-black text-[#14261c]">{featuredMatch.goals.home}</span>
+                              <span className="text-lg font-bold text-gray-300">-</span>
+                              <span className="text-3xl sm:text-4xl font-black text-[#14261c]">{featuredMatch.goals.away}</span>
+                            </div>
+                          ) : (
+                            /* If Upcoming, show Time */
+                            <span className="text-2xl sm:text-3xl font-black tracking-tight text-[#14261c]">
+                              {new Date(featuredMatch.date).toLocaleTimeString("en-IN", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: false
+                              })}
+                            </span>
+                          )}
+
+                          {/* Status / Label */}
+                          <div className="mt-2.5">
+                            {["1H", "2H", "HT", "ET", "P", "BT"].includes(featuredMatch.status.short.toUpperCase()) ? (
+                              <span className="bg-red-100 text-red-700 text-[9px] font-bold px-2.5 py-0.5 rounded-full animate-pulse uppercase tracking-wider">
+                                LIVE &bull; {featuredMatch.status.elapsed}'
+                              </span>
+                            ) : ["FT", "AET", "PEN"].includes(featuredMatch.status.short.toUpperCase()) ? (
+                              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                FINAL
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">
+                                Kick-off in:
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Away Team */}
+                        <div className="flex items-center justify-start gap-3.5 text-left">
+                          <img
+                            src={featuredMatch.teams.away.logo}
+                            alt={featuredMatch.teams.away.name}
+                            className="w-10 h-10 sm:w-12 sm:h-12 object-contain p-1 rounded-xl bg-slate-50 border border-gray-100 shadow-xs"
+                          />
+                          <span className="text-base sm:text-xl font-extrabold text-[#14261c] font-serif">
+                            {featuredMatch.teams.away.name}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Countdown Timer / Live Badge */}
+                      {timeLeft ? (
+                        <div className="mt-5 flex items-center gap-2 bg-[#fafaf7] px-4 py-1.5 rounded-full border border-[#e2e8e4] text-[11px] font-semibold text-[#5c7063] shadow-xs">
+                          <span>{timeLeft.days} days</span>
+                          <span className="text-gray-300">&bull;</span>
+                          <span>{timeLeft.hours} hrs</span>
+                          <span className="text-gray-350">&bull;</span>
+                          <span>{timeLeft.minutes} min</span>
+                          <span className="text-gray-350">&bull;</span>
+                          <span>{timeLeft.seconds} sec</span>
+                        </div>
+                      ) : (
+                        !["FT", "AET", "PEN"].includes(featuredMatch.status.short.toUpperCase()) && (
+                          <div className="mt-5 flex items-center gap-1.5 bg-red-50 px-4 py-1.5 rounded-full border border-red-100 text-[11px] font-extrabold text-red-600 shadow-xs animate-pulse uppercase">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span>
+                            LIVE
+                          </div>
+                        )
+                      )}
+
+                      {/* Venue and Footer info */}
+                      <div className="mt-6 text-center border-t border-gray-100 pt-4 w-full flex flex-col items-center">
+                        <span className="text-[10px] font-black text-[#0b422d] tracking-widest uppercase mb-1">
+                          FIFA World Cup 2026™
+                        </span>
+                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                          {featuredMatch.venue.city} &bull; {featuredMatch.venue.name}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="py-16 bg-white rounded-2xl border border-dashed border-[#e2e8e4] text-center">
+                      <p className="text-[#5c7063] text-sm font-semibold">No upcoming matches found.</p>
+                    </div>
+                  )}
+
+                  {/* Other Matches on the Same Day / Next Matches */}
+                  {featuredMatch && (
+                    <div className="space-y-4">
+                      <h4 className="text-sm font-bold text-[#14261c] uppercase tracking-wider">
+                        More Upcoming Matches
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {data.summary.fixtures
+                          .filter((f) => f.id !== featuredMatch.id && !["FT", "AET", "PEN"].includes(f.status.short.toUpperCase()))
+                          .slice(0, 4)
+                          .map((fixture) => {
+                            const isLive = ["1H", "2H", "HT", "ET", "P", "BT"].includes(fixture.status.short.toUpperCase());
+                            return (
+                              <div
+                                key={fixture.id}
+                                className="bg-white border border-[#e2e8e4] rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                              >
+                                <div>
+                                  <div className="space-y-3">
+                                    {/* Home */}
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-3">
+                                        <img
+                                          src={fixture.teams.home.logo}
+                                          alt={fixture.teams.home.name}
+                                          className="w-7 h-7 object-contain bg-slate-50 p-0.5 rounded border border-[#e2e8e4]/80"
+                                        />
+                                        <span className="text-sm font-extrabold text-[#14261c]">
+                                          {fixture.teams.home.name}
+                                        </span>
+                                      </div>
+                                      {isLive && (
+                                        <span className="text-sm font-black text-[#14261c]">{fixture.goals.home}</span>
+                                      )}
+                                    </div>
+
+                                    {/* Away */}
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-3">
+                                        <img
+                                          src={fixture.teams.away.logo}
+                                          alt={fixture.teams.away.name}
+                                          className="w-7 h-7 object-contain bg-slate-50 p-0.5 rounded border border-[#e2e8e4]/80"
+                                        />
+                                        <span className="text-sm font-extrabold text-[#14261c]">
+                                          {fixture.teams.away.name}
+                                        </span>
+                                      </div>
+                                      {isLive && (
+                                        <span className="text-sm font-black text-[#14261c]">{fixture.goals.away}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="mt-4 pt-3.5 border-t border-[#e2e8e4]/70 flex items-center justify-between">
+                                  <div className="flex flex-col">
+                                    <span className="text-[10px] text-gray-400 font-bold uppercase">
+                                      {fixture.league.round}
+                                    </span>
+                                    <span className="text-[9px] text-[#687a70] truncate max-w-[140px] mt-0.5">
+                                      {fixture.venue.city}
+                                    </span>
+                                  </div>
+
+                                  <div className="text-right flex flex-col items-end">
+                                    {isLive ? (
+                                      <span className="bg-red-100 text-red-700 text-[9px] font-bold px-2.5 py-0.5 rounded-full animate-pulse">
+                                        LIVE {fixture.status.elapsed}'
+                                      </span>
+                                    ) : (
+                                      <span className="text-[10px] font-extrabold text-[#0b422d]">
+                                        {new Date(fixture.date).toLocaleDateString("en-IN", {
+                                          month: "short",
+                                          day: "numeric"
+                                        })} &bull; {new Date(fixture.date).toLocaleTimeString("en-IN", {
+                                          hour: "2-digit",
+                                          minute: "2-digit",
+                                          hour12: true
+                                        })}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* SCHEDULE TAB */}
               {activeTab === "SCHEDULE" && (
@@ -634,7 +933,7 @@ export default function FIFAWCPage() {
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen
                       />
-                      
+
                       {/* Custom Mute/Unmute Overlay Button */}
                       <button
                         onClick={toggleMute}
@@ -788,9 +1087,6 @@ export default function FIFAWCPage() {
                 </h3>
                 <p className="text-sm text-[#5c7063] leading-relaxed">
                   The 2026 FIFA World Cup™ in North America is the 23rd edition of the biggest sporting event on the planet. The tournament is already full of firsts as it is the first to feature 48 teams and to be co-hosted by three countries (United States, Canada, and Mexico).
-                </p>
-                <p className="text-sm text-[#5c7063] leading-relaxed">
-                  The FOX Sports app is your complete home for World Cup content, including live scores, highlights, commentary and analysis, and full-match replays.
                 </p>
               </div>
 
